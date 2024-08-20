@@ -1,14 +1,16 @@
-from handlers.user_private import user_private_router
-from aiogram.client import default
-from aiogram.enums import ParseMode
-from aiogram import Dispatcher, Bot
 import asyncio
 import os
 import logging
 
 from dotenv import load_dotenv
-load_dotenv()
 
+from aiogram.client import default
+from aiogram.enums import ParseMode
+from aiogram import Dispatcher, Bot
+
+from handlers.user_private import user_private_router
+
+load_dotenv()
 
 bot = Bot(
     token=os.getenv("TOKEN"),
