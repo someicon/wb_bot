@@ -4,6 +4,8 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
+from loguru import logger
+
 
 from keyboards.reply import get_keyboard
 from misc.user_functions import create_msg
@@ -30,7 +32,7 @@ start_kb = get_keyboard(
 
 @user_private_router.message(F.text == "Инструкция по подключению")
 async def send_instruction(message: Message):
-    video = FSInputFile(path=r".\Files\instruction.MOV",
+    video = FSInputFile(path=r".\files\instruction.MOV",
                         filename="Инструкция.MOV")
     text = create_msg(
         "Выполните 3 простых действия, чтобы подключить наушники к устройству\n\n",
@@ -38,15 +40,15 @@ async def send_instruction(message: Message):
         "2. Откройте крышку кейса (наушники остаются в кейсе) и нажмите на кнопку на кейсе\n",
         "3. Найдите в списке air pods pro 2, подключите устройство\n"
     )
-    await message.answer_video(video, caption=text)
+    await message.answer_video(video, caption=text, width=720, height=1280)
 
 
 @user_private_router.message(F.text == "Хрип в наушниках")
 async def wheeze_headphones(message: Message):
-    photo = FSInputFile(r".\Files\Photo.png", filename="Фото.png")
+    photo = FSInputFile(r".\files\Photo.png", filename="Фото.png")
     await message.answer_photo(photo=photo)
 
 
 @user_private_router.message(F.text == "Другой вопрос")
-async def ask_question(message:Message):
+async def ask_question(message: Message):
     await message.answer("Если у вас остались вопросы вы можете написать менеджеру @smart_pods")

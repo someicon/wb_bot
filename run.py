@@ -2,6 +2,8 @@ import asyncio
 import os
 import logging
 
+from loguru import logger
+
 from dotenv import load_dotenv
 
 from aiogram.client import default
@@ -11,6 +13,7 @@ from aiogram import Dispatcher, Bot
 from handlers.user_private import user_private_router
 
 load_dotenv()
+
 
 bot = Bot(
     token=os.getenv("TOKEN"),
