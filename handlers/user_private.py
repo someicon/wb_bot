@@ -4,9 +4,6 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-from loguru import logger
-
-
 from keyboards.reply import get_keyboard
 from misc.user_functions import create_msg
 
@@ -40,7 +37,7 @@ async def send_instruction(message: Message):
         "2. Откройте крышку кейса (наушники остаются в кейсе) и нажмите на кнопку на кейсе\n",
         "3. Найдите в списке air pods pro 2, подключите устройство\n"
     )
-    await message.answer_video(video, caption=text, width=720, height=1280)
+    await message.answer_video(video=video, caption=text, width=720, height=1280)
 
 
 @user_private_router.message(F.text == "Хрип в наушниках")

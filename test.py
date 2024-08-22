@@ -1,14 +1,8 @@
-import logging
-from lig
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-def start():
-    while True:
-        expression = input("Введите выражение для вычисления")
-        print(f"Ваше выражение {expression}")
-        if not expression:
-            print("пустое выражение, ошибка...")
-            break
-        result = calculate
+admins = [int(admin_id) for admin_id in os.getenv("ADMINS_ID").split(",")]
+id = 3906371231231
 
-
-if __name__ == "__main__":
+print(id in admins)

@@ -2,15 +2,13 @@ import asyncio
 import os
 import logging
 
-from loguru import logger
-
 from dotenv import load_dotenv
-
 from aiogram.client import default
 from aiogram.enums import ParseMode
 from aiogram import Dispatcher, Bot
 
 from handlers.user_private import user_private_router
+from handlers.admin_private import admin_private_router
 
 load_dotenv()
 
@@ -26,11 +24,17 @@ ALLOWED_UPDATES = ["Message", "CallbackQuery"]
 
 
 async def start_bot(bot: Bot):
-    await bot.send_message(os.getenv("ADMINS_ID"), text="Бот запущен!")
+    try:
+        await bot.send_message(os.getenv("ADMINS_ID"), text="Бот запущен!")
+    except:
+        ""
 
 
 async def stop_bot(bot: Bot):
-    await bot.send_message(os.getenv("ADMINS_ID"), text="Бот остановлен!")
+    try:
+        await bot.send_message(os.getenv("ADMINS_ID"), text="Бот остановлен!")
+    except:
+        ""
 
 
 async def main():
@@ -39,7 +43,7 @@ async def main():
     dp.startup.register(start_bot)
     dp.shutdown.register(stop_bot)
 
-    dp.include_router(user_private_router)
+    dp.include_routers(user_private_router, admin_private_router)
 
     await bot.delete_webhook(drop_pending_updates=True)
 
