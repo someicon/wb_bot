@@ -14,3 +14,5 @@ async def get_admin(message: Message):
     await message.answer(f"{message.from_user.full_name} вы Администратор")
 
 #admin
+
+# test
