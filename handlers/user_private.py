@@ -6,8 +6,10 @@ from aiogram.fsm.context import FSMContext
 
 from keyboards.reply import get_keyboard
 from misc.user_functions import create_msg
+from filters.chat_types import ChatTypesFilter
 
 user_private_router = Router()
+user_private_router.message.filter(ChatTypesFilter(['private']))
 
 
 @user_private_router.message(Command('start'))
@@ -25,6 +27,22 @@ start_kb = get_keyboard(
     placeholder="Выберете пункт меню",
     sizes=(1, 1, 2)
 )
+
+
+@user_private_router.message(F.text == "Получить кешбек")
+async def get_cashback(message: Message):
+    await message.answer(
+        "Чтобы получить кешбек нужно поставить 5 звезд и отправить нам скриншот из личного кабинета"
+    )
+    await message.answer(
+        "Вы уже оставили отзыв ?",
+        reply_markup=(
+            get_keyboard(
+                "Уже оставил отызв",
+                "Еще не оставил отзыв"
+            )
+        )
+    )
 
 
 @user_private_router.message(F.text == "Инструкция по подключению")
@@ -49,3 +67,4 @@ async def wheeze_headphones(message: Message):
 @user_private_router.message(F.text == "Другой вопрос")
 async def ask_question(message: Message):
     await message.answer("Если у вас остались вопросы вы можете написать менеджеру @smart_pods")
+    await message.answer
