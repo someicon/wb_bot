@@ -26,6 +26,7 @@ ALLOWED_UPDATES = ["Message", "CallbackQuery"]
 
 
 async def start_bot(bot: Bot):
+
     logging.info("Бот запущен")
     for admin in admins_list:
         try:

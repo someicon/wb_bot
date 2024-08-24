@@ -12,7 +12,3 @@ admin_private_router.message.filter(ChatTypesFilter(['private']), IsAdmin())
 @admin_private_router.message(Command("admin"))
 async def get_admin(message: Message):
     await message.answer(f"{message.from_user.full_name} вы Администратор")
-
-#admin
-
-# test
