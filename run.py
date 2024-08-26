@@ -3,9 +3,10 @@ import os
 import logging
 
 from dotenv import load_dotenv
+from aiogram import Dispatcher, Bot
 from aiogram.client import default
 from aiogram.enums import ParseMode
-from aiogram import Dispatcher, Bot
+from aiogram.fsm.strategy import FSMStrategy
 
 from credentials.admins import admins_list
 from handlers.user_private import user_private_router
@@ -20,7 +21,7 @@ bot = Bot(
     default=default.DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 
-dp = Dispatcher()
+dp = Dispatcher(fsm_strategy=FSMStrategy.USER_IN_CHAT)
 
 ALLOWED_UPDATES = ["Message", "CallbackQuery"]
 
@@ -58,7 +59,7 @@ async def main():
 
     dp.include_routers(user_private_router, admin_private_router)
 
-    await bot.delete_webhook(drop_pending_updates=True)
+    await bot.delete_webhook(drop_pending_updates=False)
 
     try:
         await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)

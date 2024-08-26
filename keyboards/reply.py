@@ -1,4 +1,5 @@
-from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove)
+from aiogram.types import (
+    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove)
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 
@@ -37,4 +38,20 @@ def get_keyboard(
             keyboard.add(KeyboardButton(text=text))
 
     return keyboard.adjust(*sizes).as_markup(resize_keyboard=True,
-                                            input_field_placeholder=placeholder)
+                                             input_field_placeholder=placeholder)
+
+
+start_kb = get_keyboard(
+    "Получить кешбек",
+    "Инструкция по подключению",
+    "Хрип в наушниках",
+    "Другой вопрос",
+    placeholder="Выберете пункт меню",
+    sizes=(1, 1, 2)
+)
+
+cashback_kb = get_keyboard(
+    "Уже оставил отзыв",
+    "Еще не оставил отзыв",
+    "Назад"
+)
