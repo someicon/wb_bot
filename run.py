@@ -54,7 +54,6 @@ dp.startup.register(start_bot)
 dp.shutdown.register(stop_bot)
 dp.include_routers(user_private_router, admin_private_router)
 
-user_private_router.message.middleware(BaseMiddleware())
 
 
 async def main():

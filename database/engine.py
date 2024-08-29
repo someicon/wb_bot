@@ -1,17 +1,24 @@
-from sqlalchemy import DateTime, String, Text, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+import os
+from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from database.models import Base
+
+load_dotenv()
 
 
-class Base(DeclarativeBase):
-    created: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
-    created: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+engine = create_async_engine(os.getenv('DB_LITE'), echo=True)
+
+session_maker = async_sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
-class User(Base):
-    __tablename__ = 'user'
+async def create_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(String(150), nullable=False)
-    user_name: Mapped[str] = mapped_column(String(50))
-    status: Mapped[str] = mapped_column(String(50))
-    image: Mapped[str] = mapped_column(String(150))
+
+async def drop_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)

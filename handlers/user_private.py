@@ -51,8 +51,7 @@ async def wheeze_headphones(message: Message):
 
 
 @user_private_router.message(F.text == "Другой вопрос")
-async def ask_question(message: Message, counter):
-    print(counter)
+async def ask_question(message: Message):
     await message.answer("Если у вас остались вопросы вы можете написать менеджеру @smart_pods")
 
 
