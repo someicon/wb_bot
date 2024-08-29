@@ -59,7 +59,7 @@ async def ask_question(message: Message):
 
 class Cashback(StatesGroup):
     """
-    request_cashback_state - состояние после нажатия кнопки 'кешбек'    возвращать в это состояние
+    request_cashback_state - состояние после нажатия кнопки 'кешбек'
     yes_review_state = State() - состояние после нажатия да
     send_photo_state = State() - состояние после отправки фото
     received_cashback_state = State() - состояние после получения кешбека
@@ -94,8 +94,6 @@ async def get_cashback(message: Message, state: FSMContext):
             reply_markup=cashback_kb
         )
         await state.set_state(Cashback.request_cashback_state)
-
-# await message.answer("Вы вернулись на шаг назад", reply_markup=start_kb)
 
 
 @user_private_router.message(StateFilter('*'), F.text == "Назад")
@@ -149,3 +147,4 @@ async def send_photo(message: Message, state: FSMContext, bot: Bot):
 
         except Exception as e:
             logging.error(f"Ошибка при отправке сообщения: {e}")
+
