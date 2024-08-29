@@ -11,7 +11,7 @@ from aiogram.fsm.strategy import FSMStrategy
 from credentials.admins import admins_list
 from handlers.user_private import user_private_router
 from handlers.admin_private import admin_private_router
-
+from middlewares.db import BaseMiddleware
 
 load_dotenv()
 
@@ -27,7 +27,6 @@ ALLOWED_UPDATES = ["Message", "CallbackQuery"]
 
 
 async def start_bot(bot: Bot):
-
     logging.info("Бот запущен")
     for admin in admins_list:
         try:
@@ -36,8 +35,7 @@ async def start_bot(bot: Bot):
             logging.error(
                 f"Не удалось отправить сообщение админу {admin}: {e}")
         else:
-            logging.info(
-                f"сообщение отправлено админу {admin}")
+            logging.info(f"сообщение отправлено админу {admin}")
 
 
 async def stop_bot(bot: Bot):
@@ -49,15 +47,19 @@ async def stop_bot(bot: Bot):
                 f"Не удалось отправить сообщение админу {admin}: {e}")
         else:
             logging.info(f"сообщение отправлено админу {admin}")
+        logging.info("Бот остановлен")
+
+
+dp.startup.register(start_bot)
+dp.shutdown.register(stop_bot)
+dp.include_routers(user_private_router, admin_private_router)
+
+user_private_router.message.middleware(BaseMiddleware())
 
 
 async def main():
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    dp.startup.register(start_bot)
-    dp.shutdown.register(stop_bot)
-
-    dp.include_routers(user_private_router, admin_private_router)
 
     await bot.delete_webhook(drop_pending_updates=False)
 

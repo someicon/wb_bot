@@ -51,7 +51,8 @@ async def wheeze_headphones(message: Message):
 
 
 @user_private_router.message(F.text == "Другой вопрос")
-async def ask_question(message: Message):
+async def ask_question(message: Message, counter):
+    print(counter)
     await message.answer("Если у вас остались вопросы вы можете написать менеджеру @smart_pods")
 
 
@@ -147,4 +148,3 @@ async def send_photo(message: Message, state: FSMContext, bot: Bot):
 
         except Exception as e:
             logging.error(f"Ошибка при отправке сообщения: {e}")
-
