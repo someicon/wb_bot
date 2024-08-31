@@ -14,8 +14,8 @@ from handlers.admin_private import admin_private_router
 from middlewares.db import DataBaseSession
 from database.engine import session_maker, create_db, drop_db
 
-load_dotenv()
 
+load_dotenv()
 
 bot = Bot(
     token=os.getenv("TOKEN"),
@@ -26,7 +26,7 @@ dp = Dispatcher(fsm_strategy=FSMStrategy.USER_IN_CHAT)
 
 dp.include_routers(user_private_router, admin_private_router)
 
-ALLOWED_UPDATES = ["Message", "CallbackQuery"]
+#ALLOWED_UPDATES = ["Message", "CallbackQuery"]
 
 
 async def start_bot(bot: Bot):
@@ -61,17 +61,18 @@ async def stop_bot(bot: Bot):
 
 
 async def main():
-    dp.startup.register(start_bot)
-    dp.shutdown.register(stop_bot)
-    dp.update.middleware(DataBaseSession(session_pool=session_maker))
-
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    dp.startup.register(start_bot)
+    dp.shutdown.register(stop_bot)
+
+    dp.update.middleware(DataBaseSession(session_pool=session_maker))
 
     await bot.delete_webhook(drop_pending_updates=False)
 
     try:
-        await dp.start_polling(bot, allowed_updates=ALLOWED_UPDATES)
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         await bot.session.close()
 

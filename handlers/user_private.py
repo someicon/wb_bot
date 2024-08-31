@@ -1,15 +1,17 @@
 import logging
 
 from aiogram import F, Bot, Router
-from aiogram.types import Message, ReplyKeyboardRemove, FSInputFile
+from aiogram.types import Message, FSInputFile
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from keyboards.reply import get_keyboard, start_kb, cashback_kb
-from misc.user_functions import create_msg
 from filters.chat_types import ChatTypesFilter
 from credentials.admins import admins_list
+from database.orm_query import orm_add_user
+
 
 user_private_router = Router()
 user_private_router.message.filter(ChatTypesFilter(['private']))
@@ -135,16 +137,17 @@ async def yes_review(message: Message, state: FSMContext):
 
 
 @user_private_router.message(Cashback.yes_review_state, F.photo)
-async def send_photo(message: Message, state: FSMContext, bot: Bot):
-
+async def send_photo(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
     for admin in admins_list:
         try:
             await bot.send_photo(chat_id=admin, photo=message.photo[-1].file_id)
             await message.answer(
                 "Фото отправлено, когда админ подтвердит отзыв мы запросим у вас рквизиты карты\
-                    , чтобы мы могли отправить вам кешбек",
+                , чтобы мы могли отправить вам кешбек",
                 reply_markup=start_kb
             )
             await state.set_state(Cashback.send_photo_state)
         except Exception as e:
             logging.error(f"Ошибка при отправке сообщения: {e}")
+
+    await orm_add_user(session, state, message)
