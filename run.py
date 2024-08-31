@@ -12,6 +12,7 @@ from credentials.admins import admins_list
 from handlers.user_private import user_private_router
 from handlers.admin_private import admin_private_router
 from middlewares.db import BaseMiddleware
+from database.engine import create_db, drop_db
 
 load_dotenv()
 
@@ -23,11 +24,20 @@ bot = Bot(
 
 dp = Dispatcher(fsm_strategy=FSMStrategy.USER_IN_CHAT)
 
+dp.include_routers(user_private_router, admin_private_router)
+
 ALLOWED_UPDATES = ["Message", "CallbackQuery"]
 
 
 async def start_bot(bot: Bot):
     logging.info("Бот запущен")
+
+    run_param = False
+    if run_param:
+        await drop_db()
+    else:
+        await create_db()
+
     for admin in admins_list:
         try:
             await bot.send_message(admin, text="Бот запущен")
@@ -50,13 +60,10 @@ async def stop_bot(bot: Bot):
         logging.info("Бот остановлен")
 
 
-dp.startup.register(start_bot)
-dp.shutdown.register(stop_bot)
-dp.include_routers(user_private_router, admin_private_router)
-
-
-
 async def main():
+    dp.startup.register(start_bot)
+    dp.shutdown.register(stop_bot)
+
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
