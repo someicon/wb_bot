@@ -51,7 +51,7 @@ async def start_bot(bot: Bot):
 async def stop_bot(bot: Bot):
     for admin in admins_list:
         try:
-            await bot.send_message(admin, text="Остановлен")
+            await bot.send_message(admin, text="Бот остановлен")
         except Exception as e:
             logging.error(
                 f"Не удалось отправить сообщение админу {admin}: {e}")
