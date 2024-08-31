@@ -11,8 +11,8 @@ from aiogram.fsm.strategy import FSMStrategy
 from credentials.admins import admins_list
 from handlers.user_private import user_private_router
 from handlers.admin_private import admin_private_router
-from middlewares.db import BaseMiddleware
-from database.engine import create_db, drop_db
+from middlewares.db import DataBaseSession
+from database.engine import session_maker, create_db, drop_db
 
 load_dotenv()
 
@@ -63,6 +63,7 @@ async def stop_bot(bot: Bot):
 async def main():
     dp.startup.register(start_bot)
     dp.shutdown.register(stop_bot)
+    dp.update.middleware(DataBaseSession(session_pool=session_maker))
 
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

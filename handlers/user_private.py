@@ -136,14 +136,15 @@ async def yes_review(message: Message, state: FSMContext):
 
 @user_private_router.message(Cashback.yes_review_state, F.photo)
 async def send_photo(message: Message, state: FSMContext, bot: Bot):
+
     for admin in admins_list:
         try:
             await bot.send_photo(chat_id=admin, photo=message.photo[-1].file_id)
             await message.answer(
-                "Фото отправлено, когда админ подтвердит отзыв мы запросим у вас рквизиты карты , чтобы мы могли отправить вам кешбек",
+                "Фото отправлено, когда админ подтвердит отзыв мы запросим у вас рквизиты карты\
+                    , чтобы мы могли отправить вам кешбек",
                 reply_markup=start_kb
             )
             await state.set_state(Cashback.send_photo_state)
-
         except Exception as e:
             logging.error(f"Ошибка при отправке сообщения: {e}")
