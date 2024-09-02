@@ -58,5 +58,6 @@ cashback_kb = get_keyboard(
 
 admin_kb = get_keyboard(
     "Запросы на кешбек",
-    sizes=(1,)
+    "Подтвержденные запросы",
+    sizes=(2,)
 )

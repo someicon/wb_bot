@@ -20,8 +20,8 @@ async def orm_add_user(session: AsyncSession, state: FSMContext, message: Messag
     await session.commit()
 
 
-async def orm_check_user(session: AsyncSession):
-    query = select(User).where(User.status == "Cashback:send_photo_state")
+async def orm_check_user(session: AsyncSession, status: str):
+    query = select(User).where(User.status == status)
     result = await session.execute(query)
     return result.scalars().all()
 
