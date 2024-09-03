@@ -151,3 +151,5 @@ async def send_photo(message: Message, state: FSMContext, bot: Bot, session: Asy
             logging.error(f"Ошибка при отправке сообщения: {e}")
 
     await orm_add_user(session, state, message)
+
+# cashback

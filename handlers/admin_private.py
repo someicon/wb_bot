@@ -61,7 +61,4 @@ async def confirm_cashback(callback: CallbackQuery, session: AsyncSession, bot: 
 
 
 
-
-
-#TODO: Добавить ответ пользователю на присланные реквизиты
 #TODO: Добавить проверку по состоянию из бд и запись состояния в БД
