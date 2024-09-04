@@ -1,3 +1,4 @@
+from email.mime import image
 from unittest import result
 from winreg import QueryInfoKey
 from aiogram.types import Message
@@ -5,19 +6,27 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models import User
+from database.models import User, TestUser
 
 
 async def orm_add_user(session: AsyncSession, state: FSMContext, message: Message):
     obj = User(
         chat_id=message.chat.id,
         user_id=message.from_user.id,
-        user_name=message.from_user.full_name,
-        status=await state.get_state(),
-        image=message.photo[-1].file_id
+        user_name=message.from_user.username,
+        user_full_name=message.from_user.full_name,
+        #status=await state.get_state(),
+        #image="img",
+        #image=message.photo[-1].file_id,
+        #text_message="msg"
     )
     session.add(obj)
     await session.commit()
+
+async def orm_create_testuser(session: AsyncSession, state: FSMContext, message: Message):
+    obj = TestUser(
+        user_id=message.from_user.id
+    )
 
 
 async def orm_check_user(session: AsyncSession, status: str):
