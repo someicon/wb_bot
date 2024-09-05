@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, String, Text, func, Integer
+from sqlalchemy import DateTime, String, Text, func, Integer, null
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,3 +18,4 @@ class User(Base):
     user_name: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(50))
     image: Mapped[str] = mapped_column(String(150))
+    credentials: Mapped[str] = mapped_column(String(150), nullable=True)

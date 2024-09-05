@@ -13,8 +13,9 @@ async def orm_add_user(session: AsyncSession, state: FSMContext, message: Messag
         chat_id=message.chat.id,
         user_id=message.from_user.id,
         user_name=message.from_user.full_name,
-        status=await state.get_state(),
-        image=message.photo[-1].file_id
+        status=(await state.get_state()).split(":")[-1],
+        image=message.photo[-1].file_id,
+        credentials="None"
     )
     session.add(obj)
     await session.commit()
@@ -29,10 +30,15 @@ async def orm_check_user(session: AsyncSession, status: str):
 async def orm_get_user(session: AsyncSession, user_id: int):
     query = select(User).where(User.user_id == user_id)
     result = await session.execute(query)
-    return result.scalar()
+    return result.scalars().all()
 
 
 async def orm_update_status(session: AsyncSession, user_id: int, user_status: str):
     query = update(User).where(User.user_id == user_id).values(status = user_status)
+    await session.execute(query)
+    await session.commit()
+
+async def orm_update_credentials(session: AsyncSession, user_id: int, new_credentials: str):
+    query = update(User).where(User.user_id == user_id).values(credentials = new_credentials)
     await session.execute(query)
     await session.commit()

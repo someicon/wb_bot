@@ -1,10 +1,16 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
 
-admins = [int(admin_id) for admin_id in os.getenv("ADMINS_ID").split(",")]
-id = 3906371231231
 
-admins += [1231234]
+class Lst():
+    def __init__(self, my_lst) -> None:
+        self.my_lst = my_lst
 
-print(admins)
+    def print_lst(self):
+        for i in self.my_lst:
+            yield i
+
+
+a = Lst([1, 2, 3, 4, 5])
+
+result = a.print_lst()
+
+print(*result)
