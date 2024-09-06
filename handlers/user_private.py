@@ -1,4 +1,5 @@
 import logging
+from telnetlib import STATUS
 
 from aiogram import F, Bot, Router
 from aiogram.types import Message, FSInputFile
@@ -7,9 +8,13 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from credentials.admins import admins_list
+from keyboards import reply
 from keyboards.reply import get_keyboard, start_kb, cashback_kb
 from filters.chat_types import ChatTypesFilter
-from database.orm_query import orm_add_user, orm_create_testuser
+from database.orm_query import  (orm_create_user, orm_check_user,
+                                 orm_update_status, orm_add_photo, orm_get_user)
+
 
 
 user_private_router = Router()
@@ -17,12 +22,20 @@ user_private_router.message.filter(ChatTypesFilter(['private']))
 
 
 @user_private_router.message(Command('start'))
-async def cmd_start(message: Message, state: FSMContext, session: AsyncSession):
+async def cmd_start(message: Message, session: AsyncSession, state:FSMContext):
     await message.answer(
         f"Добро пожаловать в чат {message.from_user.full_name}!",
         reply_markup=start_kb
     )
-    await orm_create_testuser(session,state=await state.get_state(), message=message)
+
+    user = await orm_get_user(session, message.from_user.id)
+    user_exist = await orm_check_user(session, message.from_user.id)
+
+    if user_exist:
+        logging.info(f"Пользователь {message.from_user.username} уже существует в БД")
+        await state.set_state(user.status)
+    else:
+        await orm_create_user(session, message)
 
 
 @user_private_router.message(F.text == "Инструкция по подключению")
@@ -31,7 +44,6 @@ async def send_instruction(message: Message):
         path=r".\files\instruction.MOV",
         filename="Инструкция.MOV"
     )
-
     await message.answer_video(
         video=video,
         width=720,
@@ -41,7 +53,7 @@ async def send_instruction(message: Message):
 
 1. Включите Bluetooth на вашем устройстве
 2. Откройте крышку кейса (наушники остаются в кейсе) и нажмите на кнопку на кейсе
-3. Найдите в списке air pods pro 2, подключите устройство
+3. Найдите в списке air pods pro 2, подключите устройство~
      """
     )
 
@@ -63,88 +75,91 @@ class Cashback(StatesGroup):
     request_cashback_state = State()
     yes_review_state = State()
     send_photo_state = State()
+    send_credentials_state = State()
     received_cashback_state = State()
 
 
-# @user_private_router.message(StateFilter(None), F.text == "Получить кешбек")
-
-# @user_private_router.message(~StateFilter(Cashback.received_cashback_state), F.text == "Получить кешбек")
-# async def get_cashback(message: Message, state: FSMContext):
-#     current_state = await state.get_state()
-#
-#     if current_state == Cashback.send_photo_state:
-#         await message.answer(
-#             "Вы уже отправили запрос на кешбек, пожалуйста дождитесь ответа менеджера",
-#             reply_markup=start_kb
-#         )
-#     elif current_state == Cashback.received_cashback_state:
-#         await message.answer(
-#             "Вы уже воспользовались кешбеком",
-#             reply_markup=start_kb
-#         )
-#     else:
-#         await message.answer(
-#             """
-# Чтобы получить кешбек нужно поставить 5 звезд и отправить нам скриншот из личного кабинета
-# Вы уже оставили отзыв ?
-#         """,
-#             reply_markup=cashback_kb
-#         )
-#         await state.set_state(Cashback.request_cashback_state)
+@user_private_router.message(StateFilter("*"), F.text == "Получить кешбек")
+async def get_cashback(message: Message, state: FSMContext, session: AsyncSession):
 
 
-# @user_private_router.message(StateFilter('*'), F.text == "Назад")
-# async def cancel_handler(message: Message, state: FSMContext):
-#
-#     current_state = await state.get_state()
-#
-#     if current_state == Cashback.request_cashback_state:
-#         await message.answer("Вы вернулись в главное меню", reply_markup=start_kb)
-#     if current_state == Cashback.yes_review_state:
-#         await message.answer("Назад", reply_markup=cashback_kb)
-#         await state.set_state(Cashback.request_cashback_state)
-#
-#
-# @user_private_router.message(Cashback.request_cashback_state, F.text == "Еще не оставил отзыв")
-# async def no_review(message: Message, state: FSMContext):
-#     await message.answer(
-#         """
-# <b>Чтобы оставить отзыв, выполните следующие шаги:</b>
-#
-# 1. Шаг первый - описание шага.
-# 2. Шаг второй - описание шага.
-# 3. Шаг третий - описание шага.
-#
-# Благодарим за ваш отзыв!
-#         """,
-#         reply_markup=start_kb
-#     )
-#     await state.clear()
-#
-#
-# @user_private_router.message(Cashback.request_cashback_state, F.text == "Уже оставил отзыв")
-# async def yes_review(message: Message, state: FSMContext):
-#     await message.answer(
-#         text="Пожалуйста отпавьте скриншот с отзывом из <b>личного кабинета</b>",
-#         reply_markup=get_keyboard("Назад")
-#     )
-#     await state.set_state(Cashback.yes_review_state)
-#
-#
-# @user_private_router.message(Cashback.yes_review_state, F.photo)
-# async def send_photo(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
-#     for admin in admins_list:
-#         try:
-#             await bot.send_photo(chat_id=admin, photo=message.photo[-1].file_id)
-#             await message.answer(
-#                 "Фото отправлено, когда админ подтвердит отзыв мы запросим у вас рквизиты карты\
-#                 , чтобы мы могли отправить вам кешбек",
-#                 reply_markup=start_kb
-#             )
-#             await state.set_state(Cashback.send_photo_state)
-#         except Exception as e:
-#             logging.error(f"Ошибка при отправке сообщения: {e}")
-#
-#     await orm_add_user(session, state, message)
+    user = await orm_get_user(session, message.from_user.id)
 
-# cashback
+    if user.status == "send_photo_state":
+        await message.answer(
+            "Вы уже отправили запрос на кешбек, пожалуйста дождитесь ответа менеджера",
+            reply_markup=start_kb
+        )
+    elif user.status == "send_credentials_state":
+        await message.answer(
+            "Вы уже отправили реквизиты, когда кешбек будет зачислен мы отправим вам сообщение",
+            reply_markup=start_kb
+        )
+    elif user.status == "received_cashback_state":
+        await message.answer(
+            "Вы уже получили кешбек"
+        )
+    else:
+        await message.answer(
+            "Чтобы получить кешбек нужно поставить 5 звезд и отправить нам скриншот из личного кабинета\
+            \nВы уже оставили отзыв ?",
+            reply_markup=cashback_kb
+        )
+        await state.set_state(Cashback.request_cashback_state) # 1 состояние
+        await message.answer(f"{user.status}")
+
+@user_private_router.message(StateFilter('*'), F.text == "Назад")
+async def cancel_handler(message: Message, state: FSMContext):
+
+    current_state = await state.get_state()
+
+    if current_state == Cashback.request_cashback_state:
+        await message.answer("Вы вернулись в главное меню", reply_markup=start_kb)
+    if current_state == Cashback.yes_review_state:
+        await message.answer("Назад", reply_markup=cashback_kb)
+        await state.set_state(Cashback.request_cashback_state)  # 2 состояние
+
+
+@user_private_router.message(Cashback.request_cashback_state, F.text == "Еще не оставил отзыв")
+async def no_review(message: Message, state: FSMContext):
+    await message.answer(
+        "<b>Чтобы оставить отзыв, выполните следующие шаги:</b>\
+1. Шаг первый - описание шага.\
+2. Шаг второй - описание шага.\
+3. Шаг третий - описание шага.\
+\nБлагодарим за ваш отзыв!",
+        reply_markup=start_kb
+    )
+    await state.clear()
+
+
+@user_private_router.message(Cashback.request_cashback_state, F.text == "Уже оставил отзыв")
+async def yes_review(message: Message, state: FSMContext):
+    await message.answer(
+        text="Пожалуйста отправьте в чат скриншот с отзывом из <b>личного кабинета</b>",
+        reply_markup=get_keyboard("Назад")
+    )
+    await state.set_state(Cashback.yes_review_state)
+
+
+@user_private_router.message(Cashback.yes_review_state, F.photo)
+async def send_photo(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
+    photo = message.photo[-1].file_id
+
+    try:
+        await state.set_state(Cashback.send_photo_state)
+        await orm_update_status(session, message.from_user.id, "send_photo_state")
+        await orm_add_photo(session, message.from_user.id, photo)
+    except Exception as e:
+        logging.error(f"Ошибка при занесении пользователя в базу: {e}")
+        await message.answer("Ошибка при отправке фото, попробуйте еще раз", reply_markup=cashback_kb)
+    else:
+        await message.answer(
+            "Фото отправлено. Когда менеджер подтвердит отзыв, запросим реквизиты для начисления кешбека.",
+            reply_markup=start_kb
+        )
+        for admin in admins_list:
+            try:
+                await bot.send_message(admin, f"Пользователь @{message.from_user.username} отправил запрос на кешбек")
+            except Exception as e:
+                logging.error(f"Ошибка при отправке сообщения админу: {e}")
