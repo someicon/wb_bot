@@ -138,6 +138,7 @@ async def no_review(message: Message, state: FSMContext):
 
 @user_private_router.message(Cashback.request_cashback_state, F.text == "Уже оставил отзыв")
 async def yes_review(message: Message, state: FSMContext):
+
     await message.answer(
         text="Пожалуйста отправьте в чат скриншот с отзывом из <b>личного кабинета</b>",
         reply_markup=get_keyboard("Назад")
@@ -177,9 +178,7 @@ async def send_photo(message: Message, state: FSMContext, bot: Bot, session: Asy
 async def get_user_credentials(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
 
     await state.set_state(Cashback.user_write_credentials)    #4 состояние
-
     await orm_update_status(session, message.from_user.id, "user_write_credentials")
-
     await bot.send_message(
         chat_id=message.from_user.id,
         text="Ниже укажите реквизиты как в одном из примеров указаных ниже:\
@@ -193,13 +192,12 @@ async def get_user_credentials(message: Message, state: FSMContext, bot: Bot, se
 async def user_write_credentials(message: Message, state:FSMContext, session:AsyncSession):
 
     await orm_update_credentials(session,message.from_user.id, message.text)
-
     await message.answer(
         f"Проверьте правильность введнных данных\n{message.text}",
         reply_markup=send_credentials_kb
         )
-    await state.set_state(Cashback.send_credentials_state)    # 5 состояние
 
+    await state.set_state(Cashback.send_credentials_state)    # 5 состояние
     await orm_update_status(session, message.from_user.id, "send_credentials_state")
 
 
@@ -222,7 +220,5 @@ async def send_credentials(message: Message, state:FSMContext, bot: Bot):
 async def send_credentials_again(message: Message, state: FSMContext, session: AsyncSession, bot: Bot):
 
     await state.set_state(Cashback.user_write_credentials)
-
     await orm_update_status(session, message.from_user.id, "user_write_credentials")
-
     await message.answer("Введите реквизиты заново", reply_markup=ReplyKeyboardRemove())

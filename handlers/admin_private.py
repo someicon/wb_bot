@@ -79,7 +79,7 @@ async def confirm_cashback(callback: CallbackQuery, session: AsyncSession, bot: 
 
     await orm_update_status(session, user_id, "received_cashback_state")
 
-
+l
 
 
 
