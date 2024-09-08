@@ -36,6 +36,7 @@ async def orm_get_user(session: AsyncSession, user_id: int):
     result = await session.execute(query)
     return result.scalar()
 
+
 async def orm_get_users(session: AsyncSession, user_status: str):
     query = select(User).where(User.status == user_status)
     result = await session.execute(query)
@@ -45,6 +46,12 @@ async def orm_get_users(session: AsyncSession, user_status: str):
 async def orm_update_status(session: AsyncSession, user_id: int, user_status: str):
     query = update(User).where(
         User.user_id == user_id).values(status=user_status)
+    await session.execute(query)
+    await session.commit()
+
+
+async def orm_update_credentials(session: AsyncSession, user_id: int, user_credentials: str):
+    query = update(User).where(User.user_id == user_id).values(credentials=user_credentials)
     await session.execute(query)
     await session.commit()
 

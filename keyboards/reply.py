@@ -62,3 +62,9 @@ admin_kb = get_keyboard(
     "Выйти из режима администратора",
     sizes=(2, 1)
 )
+
+send_credentials_kb = get_keyboard(
+    "Отправить реквизиты",
+    "Ввести реквизиты заново",
+    sizes=(1, 1)
+)

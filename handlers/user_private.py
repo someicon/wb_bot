@@ -1,24 +1,27 @@
 import logging
-from telnetlib import STATUS
 
 from aiogram import F, Bot, Router
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, FSInputFile, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from credentials.admins import admins_list
-from keyboards import reply
-from keyboards.reply import get_keyboard, start_kb, cashback_kb
+from keyboards.reply import get_keyboard, start_kb, cashback_kb, send_credentials_kb
 from filters.chat_types import ChatTypesFilter
-from database.orm_query import  (orm_create_user, orm_check_user,
+from database.orm_query import  (orm_create_user, orm_check_user, orm_update_credentials,
                                  orm_update_status, orm_add_photo, orm_get_user)
 
 
 
 user_private_router = Router()
 user_private_router.message.filter(ChatTypesFilter(['private']))
+
+@user_private_router.message(Command('status'))
+async def cmd_get_status(message: Message, state:FSMContext):
+    status = await state.get_state()
+    await message.answer(text=f"{status}")
 
 
 @user_private_router.message(Command('start'))
@@ -75,13 +78,13 @@ class Cashback(StatesGroup):
     request_cashback_state = State()
     yes_review_state = State()
     send_photo_state = State()
+    user_write_credentials = State() # Состояние пользователь при вводе реквизитов
     send_credentials_state = State()
     received_cashback_state = State()
 
 
 @user_private_router.message(StateFilter("*"), F.text == "Получить кешбек")
 async def get_cashback(message: Message, state: FSMContext, session: AsyncSession):
-
 
     user = await orm_get_user(session, message.from_user.id)
 
@@ -139,15 +142,17 @@ async def yes_review(message: Message, state: FSMContext):
         text="Пожалуйста отправьте в чат скриншот с отзывом из <b>личного кабинета</b>",
         reply_markup=get_keyboard("Назад")
     )
+
     await state.set_state(Cashback.yes_review_state)
 
 
 @user_private_router.message(Cashback.yes_review_state, F.photo)
 async def send_photo(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
+
     photo = message.photo[-1].file_id
 
     try:
-        await state.set_state(Cashback.send_photo_state)
+        await state.set_state(Cashback.send_photo_state)    # 3 состояние
         await orm_update_status(session, message.from_user.id, "send_photo_state")
         await orm_add_photo(session, message.from_user.id, photo)
     except Exception as e:
@@ -158,8 +163,66 @@ async def send_photo(message: Message, state: FSMContext, bot: Bot, session: Asy
             "Фото отправлено. Когда менеджер подтвердит отзыв, запросим реквизиты для начисления кешбека.",
             reply_markup=start_kb
         )
+
         for admin in admins_list:
             try:
                 await bot.send_message(admin, f"Пользователь @{message.from_user.username} отправил запрос на кешбек")
             except Exception as e:
                 logging.error(f"Ошибка при отправке сообщения админу: {e}")
+
+
+# Тут включается состояние когда пользователь вводит свои реквизиты
+
+@user_private_router.callback_query(F.data.startswith('answer_'))
+async def get_user_credentials(message: Message, state: FSMContext, bot: Bot, session: AsyncSession):
+
+    await state.set_state(Cashback.user_write_credentials)    #4 состояние
+
+    await orm_update_status(session, message.from_user.id, "user_write_credentials")
+
+    await bot.send_message(
+        chat_id=message.from_user.id,
+        text="Ниже укажите реквизиты как в одном из примеров указаных ниже:\
+        \nСбербанк - номер карты 111 111 222 444 555\
+        \nВТБ - номер телефона +79291234567",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+
+@user_private_router.message(Cashback.user_write_credentials, F.text)
+async def user_write_credentials(message: Message, state:FSMContext, session:AsyncSession):
+
+    await orm_update_credentials(session,message.from_user.id, message.text)
+
+    await message.answer(
+        f"Проверьте правильность введнных данных\n{message.text}",
+        reply_markup=send_credentials_kb
+        )
+    await state.set_state(Cashback.send_credentials_state)    # 5 состояние
+
+    await orm_update_status(session, message.from_user.id, "send_credentials_state")
+
+
+@user_private_router.message(Cashback.send_credentials_state, F.text == "Отправить реквизиты")
+async def send_credentials(message: Message, state:FSMContext, bot: Bot):
+
+    await message.answer(
+        text="Ваши данные отправлены, мы отправим вам сообщение, когда кешбек будет зачислен на карту",
+        reply_markup=start_kb
+    )
+
+    for admin in admins_list:
+            try:
+                await bot.send_message(admin, f"Пользователь @{message.from_user.username} отправил реквизиты")
+            except Exception as e:
+                logging.error(f"Ошибка при отправке сообщения админу: {e}")
+
+
+@user_private_router.message(Cashback.send_credentials_state, F.text == "Ввести реквизиты заново")
+async def send_credentials_again(message: Message, state: FSMContext, session: AsyncSession, bot: Bot):
+
+    await state.set_state(Cashback.user_write_credentials)
+
+    await orm_update_status(session, message.from_user.id, "user_write_credentials")
+
+    await message.answer("Введите реквизиты заново", reply_markup=ReplyKeyboardRemove())
