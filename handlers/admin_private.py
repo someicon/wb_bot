@@ -149,3 +149,6 @@ async def confirm_cashback(callback: CallbackQuery, session: AsyncSession, bot: 
 
     await bot.delete_message(chat_id=callback.message.chat.id, message_id=callback.message.message_id)
     await callback.answer("Сообщение отправлено пользователю")
+
+
+# Выход из режима админа

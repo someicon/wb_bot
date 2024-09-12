@@ -229,5 +229,5 @@ async def send_credentials_again(message: Message, state: FSMContext, session: A
     await message.answer("Введите реквизиты заново", reply_markup=ReplyKeyboardRemove())
 
 
-#TODO: Удалить сообщение, после того как админ нажимает кнопку
+
 #TODO: Добавить историю кешбеков
