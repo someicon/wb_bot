@@ -227,7 +227,3 @@ async def send_credentials_again(message: Message, state: FSMContext, session: A
     await state.set_state(Cashback.user_write_credentials)
     await orm_update_status(session, message.from_user.id, "user_write_credentials")
     await message.answer("Введите реквизиты заново", reply_markup=ReplyKeyboardRemove())
-
-
-
-#TODO: Добавить историю кешбеков

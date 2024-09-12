@@ -154,7 +154,7 @@ async def confirm_cashback(callback: CallbackQuery, session: AsyncSession, bot: 
 # Выход из режима админа
 
 @admin_private_router.message(F.text == "Выйти из режима администратора")
-async def exit_admin_menu(message:Message, state:FSMContext):
+async def exit_admin_menu(message: Message, state: FSMContext):
 
     await state.clear()
     await message.answer("Вы вышли из режима администратора", reply_markup=start_kb)
@@ -162,12 +162,11 @@ async def exit_admin_menu(message:Message, state:FSMContext):
 
 # История кешбеков
 
-@admin_private_router.message(F.text =="История кешбеков")
-async def get_cashback_history(message: Message, session:AsyncSession):
-
+@admin_private_router.message(F.text == "История кешбеков")
+async def get_cashback_history(message: Message, session: AsyncSession):
 
     for user in await orm_get_users(session, user_status="received_cashback_state"):
-            await message.answer_photo(
-                user.image,
-                caption=f"{user.user_name}\n{user.user_full_name}",
-            )
+        await message.answer_photo(
+            user.image,
+            caption=f"{user.user_name}\n{user.user_full_name}",
+        )
