@@ -190,7 +190,7 @@ async def get_user_credentials(message: Message, state: FSMContext, bot: Bot, se
 
 
 
-@user_private_router.message(Cashback.user_write_credentials, Cashback.user_write_credentials, F.text)
+@user_private_router.message(Cashback.user_write_credentials,  F.text)
 async def user_write_credentials(message: Message, state:FSMContext, session:AsyncSession):
     await orm_update_credentials(session,message.from_user.id, message.text)
     await message.answer(

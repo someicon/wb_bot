@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from filters.chat_types import ChatTypesFilter, IsAdmin
 from keyboards.reply import get_keyboard, admin_kb
 from keyboards.inline import get_inline_btns
-from database.orm_query import orm_check_user, orm_get_user, orm_update_status, orm_get_users
+from database.orm_query import orm_update_status, orm_get_users
 
 
 admin_private_router = Router()
@@ -60,36 +60,62 @@ async def confirm_cashback(callback: CallbackQuery, bot: Bot):
 
 
 class Reject(StatesGroup):
+    write_message_state = State()
     send_message_state = State()
-    received_message_state = State()
 
 
 @admin_private_router.callback_query(F.data.startswith("reject_"))
 async def decline_cashback(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
-    state.set_state(Reject.send_message_state)
+    await state.set_state(Reject.write_message_state)
 
     user_id = int(callback.data.split("_")[-1])
 
-    state.update_data(chat_id=callback.message.chat.id)
-    state.update_data(message_id=callback.message.message_id)
-    state.update_data(user_id=user_id)
+    await state.update_data(chat_id=callback.message.chat.id)
+    await state.update_data(message_id=callback.message.message_id)
+    await state.update_data(user_id=user_id)
 
-    callback.message.answer("Укажите причину отказа",
-                            reply_markup=ReplyKeyboardRemove())
+    await callback.message.answer("Укажите причину отказа", reply_markup=ReplyKeyboardRemove())
 
 
-@admin_private_router.message(Reject.send_message_state, F.text)
-async def get_text(message: Message, state: FSMContext, session: AsyncSession):
+@admin_private_router.message(Reject.write_message_state, F.text)
+async def write_text(message: Message, state: FSMContext):
+
+    await state.set_state(Reject.send_message_state)
+    await state.update_data(admin_message=message.text)
+
+    data = await state.get_data()
+
     await message.answer(
-        f"Отправить слудующее сообщение:\n\n{message.text}",
+        f"Проверьте данные\n\n{data["admin_message"]}",
         reply_markup=get_keyboard(
             "Отправить",
             "Изменить"
         )
     )
 
-@admin_private_router.message()
+
+@admin_private_router.message(Reject.send_message_state, F.text == "Отправить")
+async def send_text(message: Message, state: FSMContext, session: AsyncSession, bot: Bot):
+
+    data = await state.get_data()
+
+    await bot.send_message(
+        chat_id=data["user_id"],
+        text=data["admin_message"],
+    )
+    await orm_update_status(session, data["user_id"], "None")
+    await bot.delete_message(chat_id=data["chat_id"], message_id=data["message_id"])
+    await message.answer("Сообщение отправлено пользователю", reply_markup=admin_kb)
+
+    await state.clear()
+
+
+@admin_private_router.message(Reject.send_message_state, F.text == "Изменить")
+async def change_text(message: Message, state: FSMContext):
+
+    await state.set_state(Reject.write_message_state)
+    await message.answer("Введите сообщение еще раз", reply_markup=ReplyKeyboardRemove())
 
 
 # Подтверждение кешбеков
