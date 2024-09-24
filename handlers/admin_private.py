@@ -153,7 +153,7 @@ async def confirm_cashback(callback: CallbackQuery, session: AsyncSession, bot: 
 
 # Выход из режима админа
 
-@admin_private_router.message(F.text == "Выйти из режима администратора")
+@admin_private_router.message(F.text == "Выйти из режима администратёора")
 async def exit_admin_menu(message: Message, state: FSMContext):
 
     await state.clear()
@@ -170,3 +170,7 @@ async def get_cashback_history(message: Message, session: AsyncSession):
             user.image,
             caption=f"{user.user_name}\n{user.user_full_name}",
         )
+
+
+# TODO: добавить кнопку назад из меню отклонить при запросе на кешбек
+# TODO: добавить подтверждения после того как менеджер перечислил деньги и отправляет пользователь сообщение о полученом кешбеке
