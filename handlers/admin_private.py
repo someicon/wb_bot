@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from filters.chat_types import ChatTypesFilter, IsAdmin
 from keyboards.reply import get_keyboard, admin_kb, start_kb
 from keyboards.inline import get_inline_btns
-from database.orm_query import orm_update_status, orm_get_users
+from database.orm_query import orm_update_status, orm_get_users, orm_get_user
 
 
 admin_private_router = Router()
@@ -37,26 +37,58 @@ async def get_user_list(message: Message, session: AsyncSession):
             )
         )
 
+# Состояния для кнопки Подтвердить
+
+
+class Confirm(StatesGroup):
+    confirm_state = State()
+
 
 @admin_private_router.callback_query(F.data.startswith('confirm_'))
-async def confirm_cashback(callback: CallbackQuery, bot: Bot):
-
+async def confirm_cashback(callback: CallbackQuery, bot: Bot, session: AsyncSession, state: FSMContext):
     user_id = int(callback.data.split("_")[-1])
 
-    await bot.send_message(
-        chat_id=user_id,
-        text="Мы подтвердили ваш отзыв, нажмите кнопку ответ и укажите банк и реквизиты (номер телефона или карту), чтобы мы могли отправить вам кешбек",
-        reply_markup=get_inline_btns(
-            btns={
-                'Отправить реквизиты': f'answer_{user_id}'
-            }
+    await state.set_state(Confirm.confirm_state)
+    await state.update_data(user=user_id)
+    await state.update_data(message_id=callback.message.message_id)
+    await state.update_data(chat_id=callback.message.chat.id)
+    await callback.message.answer(
+        "Подтвердите пожалуйста еще раз",
+        reply_markup=get_keyboard(
+            "Подтвердить",
+            "Отклонить",
+            sizes=(2,)
         )
     )
 
-    await bot.delete_message(chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-    await callback.answer("Сообщение отправлено пользователю")
 
-# состояния для кнопки отклонить
+@admin_private_router.message(Confirm.confirm_state, F.text == "Подтвердить")
+async def send_confirmed_cashback(message: Message, bot: Bot, state: FSMContext):
+    data = await state.get_data()
+
+    await bot.send_message(
+        chat_id=data['user'],
+        text="Мы подтвердили ваш отзыв, нажмите кнопку ответ и укажите банк и реквизиты (номер телефона или карту), чтобы мы могли отправить вам кешбек",
+        reply_markup=get_inline_btns(
+            btns={
+                'Отправить реквизиты': f'answer_{data['user']}'
+            }
+        )
+    )
+    await state.clear()
+    await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+    await message.answer(f"Сообщение отправлено пользователю",
+                         reply_markup=admin_kb)
+
+@admin_private_router.message(Confirm.confirm_state, F.text == "Отклонить")
+async def back_to_menu(message:Message, state:FSMContext, bot:Bot):
+    # data = await state.get_data()
+
+    # await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+    await state.clear()
+    await message.answer("Отменить", reply_markup=admin_kb)
+
+# Состояния для кнопки Отклонить
 
 
 class Reject(StatesGroup):
@@ -66,21 +98,17 @@ class Reject(StatesGroup):
 
 @admin_private_router.callback_query(F.data.startswith("reject_"))
 async def decline_cashback(callback: CallbackQuery, bot: Bot, state: FSMContext):
-
-    await state.set_state(Reject.write_message_state)
-
     user_id = int(callback.data.split("_")[-1])
 
+    await state.set_state(Reject.write_message_state)
     await state.update_data(chat_id=callback.message.chat.id)
     await state.update_data(message_id=callback.message.message_id)
     await state.update_data(user_id=user_id)
-
     await callback.message.answer("Укажите причину отказа", reply_markup=ReplyKeyboardRemove())
 
 
 @admin_private_router.message(Reject.write_message_state, F.text)
 async def write_text(message: Message, state: FSMContext):
-
     await state.set_state(Reject.send_message_state)
     await state.update_data(admin_message=message.text)
 
@@ -97,7 +125,6 @@ async def write_text(message: Message, state: FSMContext):
 
 @admin_private_router.message(Reject.send_message_state, F.text == "Отправить")
 async def send_text(message: Message, state: FSMContext, session: AsyncSession, bot: Bot):
-
     data = await state.get_data()
 
     await bot.send_message(
@@ -172,5 +199,5 @@ async def get_cashback_history(message: Message, session: AsyncSession):
         )
 
 
-# TODO: добавить кнопку назад из меню отклонить при запросе на кешбек
 # TODO: добавить подтверждения после того как менеджер перечислил деньги и отправляет пользователь сообщение о полученом кешбеке
+# TODO: если пользователь уже пришло сообщение о запросе реквизитов, ему больше не будут приходить сообщения
