@@ -93,6 +93,11 @@ async def get_cashback(message: Message, state: FSMContext, session: AsyncSessio
             "Вы уже отправили запрос на кешбек, пожалуйста дождитесь ответа менеджера",
             reply_markup=start_kb
         )
+    elif user.status == "wait_credentials_state":
+        await message.answer(
+            "Вы уже отправили запрос на кешбек, отправьте пожалуйста свои реквизиты",
+            reply_markup=start_kb
+        )
     elif user.status == "send_credentials_state":
         await message.answer(
             "Вы уже отправили реквизиты, когда кешбек будет зачислен мы отправим вам сообщение",
@@ -227,3 +232,5 @@ async def send_credentials_again(message: Message, state: FSMContext, session: A
     await state.set_state(Cashback.user_write_credentials)
     await orm_update_status(session, message.from_user.id, "user_write_credentials")
     await message.answer("Введите реквизиты заново", reply_markup=ReplyKeyboardRemove())
+
+# TODO: Разделить состояния

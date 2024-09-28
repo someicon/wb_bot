@@ -59,9 +59,10 @@ cashback_kb = get_keyboard(
 admin_kb = get_keyboard(
     "Запросы на кешбек",
     "Подтвержденные запросы",
+    "Отправляют реквизиты",
     "История кешбеков",
     "Выйти из режима администратора",
-    sizes=(2, 1)
+    sizes=(2, 1, 1, 1)
 )
 
 send_credentials_kb = get_keyboard(

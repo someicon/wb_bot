@@ -45,7 +45,7 @@ class Confirm(StatesGroup):
 
 
 @admin_private_router.callback_query(F.data.startswith('confirm_'))
-async def confirm_cashback(callback: CallbackQuery, bot: Bot, session: AsyncSession, state: FSMContext):
+async def confirm_cashback(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split("_")[-1])
 
     await state.set_state(Confirm.confirm_state)
@@ -63,8 +63,10 @@ async def confirm_cashback(callback: CallbackQuery, bot: Bot, session: AsyncSess
 
 
 @admin_private_router.message(Confirm.confirm_state, F.text == "Подтвердить")
-async def send_confirmed_cashback(message: Message, bot: Bot, state: FSMContext):
+async def send_confirmed_cashback(message: Message, bot: Bot, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
+
+    await orm_update_status(session, data['user'], "wait_credentials_state")
 
     await bot.send_message(
         chat_id=data['user'],
@@ -80,16 +82,17 @@ async def send_confirmed_cashback(message: Message, bot: Bot, state: FSMContext)
     await message.answer(f"Сообщение отправлено пользователю",
                          reply_markup=admin_kb)
 
+
 @admin_private_router.message(Confirm.confirm_state, F.text == "Отклонить")
-async def back_to_menu(message:Message, state:FSMContext, bot:Bot):
+async def back_to_menu(message: Message, state: FSMContext, bot: Bot):
     # data = await state.get_data()
 
     # await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
     await state.clear()
     await message.answer("Отменить", reply_markup=admin_kb)
 
-# Состояния для кнопки Отклонить
 
+# Состояния для кнопки Отклонить
 
 class Reject(StatesGroup):
     write_message_state = State()
@@ -97,7 +100,7 @@ class Reject(StatesGroup):
 
 
 @admin_private_router.callback_query(F.data.startswith("reject_"))
-async def decline_cashback(callback: CallbackQuery, bot: Bot, state: FSMContext):
+async def decline_cashback(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split("_")[-1])
 
     await state.set_state(Reject.write_message_state)
@@ -145,7 +148,9 @@ async def change_text(message: Message, state: FSMContext):
     await message.answer("Введите сообщение еще раз", reply_markup=ReplyKeyboardRemove())
 
 
-# Подтверждение кешбеков
+# Отправка пользователю сообщения о его подтвержденном кешбеке
+
+
 @admin_private_router.message(F.text == "Подтвержденные запросы")
 async def get_user_list_cred(message: Message, session: AsyncSession):
 
@@ -161,30 +166,60 @@ async def get_user_list_cred(message: Message, session: AsyncSession):
         )
 
 
-@admin_private_router.callback_query(F.data.startswith('cashback_'))
-async def confirm_cashback(callback: CallbackQuery, session: AsyncSession, bot: Bot):
+class SendCashback(StatesGroup):
+    confirm_state = State()
 
+
+@admin_private_router.callback_query(F.data.startswith('cashback_'))
+async def send_notification(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split("_")[-1])
 
-    await callback.answer("")
-    await bot.send_message(
-        chat_id=user_id,
-        text="Мы зачислили кешбек на карту",
+    await state.set_state(SendCashback.confirm_state)
+    await state.update_data(user=user_id)
+    await state.update_data(message_id=callback.message.message_id)
+    await state.update_data(chat_id=callback.message.chat.id)
+    await callback.message.answer(
+        "Подтвердите пожалуйста еще раз",
+        reply_markup=get_keyboard(
+            "Подтвердить",
+            "Отклонить",
+            sizes=(2,)
+        )
     )
 
-    await orm_update_status(session, user_id, "received_cashback_state")
 
-    await bot.delete_message(chat_id=callback.message.chat.id, message_id=callback.message.message_id)
-    await callback.answer("Сообщение отправлено пользователю")
+@admin_private_router.message(SendCashback.confirm_state, F.text == "Подтвердить")
+async def confirm_send_notification(message: Message, bot: Bot, state: FSMContext, session: AsyncSession):
+    data = await state.get_data()
 
+    await orm_update_status(session, data['user'], "received_cashback_state")
 
-# Выход из режима админа
-
-@admin_private_router.message(F.text == "Выйти из режима администратёора")
-async def exit_admin_menu(message: Message, state: FSMContext):
+    await bot.send_message(
+        chat_id=data['user'],
+        text="Мы зачислили вам кешбек, проверьте пожалуйста баланс",
+    )
 
     await state.clear()
-    await message.answer("Вы вышли из режима администратора", reply_markup=start_kb)
+    await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+    await message.answer("Сообщение о отправлено пользователю", reply_markup=admin_kb)
+
+
+@admin_private_router.message(SendCashback.confirm_state, F.text == "Отклонить")
+async def cancel_sending_notification(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Отменить", reply_markup=admin_kb)
+
+
+# Отправляют реквизиты
+
+@admin_private_router.message(F.text == "Отправляют реквизиты")
+async def get_cashback_history(message: Message, session: AsyncSession):
+
+    for user in await orm_get_users(session, user_status="wait_credentials_state"):
+        await message.answer_photo(
+            user.image,
+            caption=f"{user.user_name}\n{user.user_full_name}",
+        )
 
 
 # История кешбеков
@@ -198,6 +233,13 @@ async def get_cashback_history(message: Message, session: AsyncSession):
             caption=f"{user.user_name}\n{user.user_full_name}",
         )
 
+# Выход из режима админа
 
-# TODO: добавить подтверждения после того как менеджер перечислил деньги и отправляет пользователь сообщение о полученом кешбеке
-# TODO: если пользователь уже пришло сообщение о запросе реквизитов, ему больше не будут приходить сообщения
+@admin_private_router.message(F.text == "Выйти из режима администратора")
+async def exit_admin_menu(message: Message, state: FSMContext):
+
+    await state.clear()
+    await message.answer("Вы вышли из режима администратора", reply_markup=start_kb)
+
+
+# TODO: Если пользователь уже пришло сообщение о запросе реквизитов, ему больше не будут приходить сообщения
