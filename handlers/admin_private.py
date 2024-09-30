@@ -65,23 +65,26 @@ async def confirm_cashback(callback: CallbackQuery, state: FSMContext):
 @admin_private_router.message(Confirm.confirm_state, F.text == "Подтвердить")
 async def send_confirmed_cashback(message: Message, bot: Bot, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
+    user = await orm_get_user(session, data['user'])
 
-    await orm_update_status(session, data['user'], "wait_credentials_state")
-
-    await bot.send_message(
-        chat_id=data['user'],
-        text="Мы подтвердили ваш отзыв, нажмите кнопку ответ и укажите банк и реквизиты (номер телефона или карту), чтобы мы могли отправить вам кешбек",
-        reply_markup=get_inline_btns(
-            btns={
-                'Отправить реквизиты': f'answer_{data['user']}'
-            }
+    if user.status == "send_photo_state":
+        await orm_update_status(session, data['user'], "wait_credentials_state")
+        await bot.send_message(
+            chat_id=data['user'],
+            text="Мы подтвердили ваш отзыв, нажмите кнопку ответ и укажите банк и реквизиты (номер телефона или карту), чтобы мы могли отправить вам кешбек",
+            reply_markup=get_inline_btns(
+                btns={
+                    'Отправить реквизиты': f'answer_{data['user']}'
+                }
+            )
         )
-    )
-    await state.clear()
-    await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
-    await message.answer(f"Сообщение отправлено пользователю",
-                         reply_markup=admin_kb)
-
+        await state.clear()
+        await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+        await message.answer(f"Сообщение отправлено пользователю",
+                            reply_markup=admin_kb)
+    else:
+        await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+        await message.answer("Пользователь уже получил сообщение", reply_markup=admin_kb)
 
 @admin_private_router.message(Confirm.confirm_state, F.text == "Отклонить")
 async def back_to_menu(message: Message, state: FSMContext, bot: Bot):
@@ -191,17 +194,20 @@ async def send_notification(callback: CallbackQuery, state: FSMContext):
 @admin_private_router.message(SendCashback.confirm_state, F.text == "Подтвердить")
 async def confirm_send_notification(message: Message, bot: Bot, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
+    user = await orm_get_user(session, data['user'])
 
-    await orm_update_status(session, data['user'], "received_cashback_state")
-
-    await bot.send_message(
-        chat_id=data['user'],
-        text="Мы зачислили вам кешбек, проверьте пожалуйста баланс",
-    )
-
-    await state.clear()
-    await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
-    await message.answer("Сообщение о отправлено пользователю", reply_markup=admin_kb)
+    if user.status == "send_credentials_state":
+        await orm_update_status(session, data['user'], "received_cashback_state")
+        await bot.send_message(
+            chat_id=data['user'],
+            text="Мы зачислили вам кешбек, проверьте пожалуйста баланс",
+        )
+        await state.clear()
+        await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+        await message.answer("Сообщение о отправлено пользователю", reply_markup=admin_kb)
+    else:
+        await bot.delete_message(chat_id=data['chat_id'], message_id=data['message_id'])
+        message.answer("Пользователь уже получил сообщение", reply_markup=admin_kb)
 
 
 @admin_private_router.message(SendCashback.confirm_state, F.text == "Отклонить")
